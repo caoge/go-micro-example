@@ -1,15 +1,20 @@
-# 若运行环境是 Linux 则需把 alpine 换成 debian
-# 使用最新版 alpine 作为基础镜像
+FROM golang:1.9.0 as builder
+
+WORKDIR /go/src/shippy/vessel-service
+
+COPY . .
+
+RUN go get -u github.com/golang/dep/cmd/dep
+RUN dep init && dep ensure
+RUN CGO_ENABLED=0 GOOS=linux go build -o vessel-service -a -installsuffix cgo main.go repository.go handler.go datastore.go
+
+
 FROM alpine:latest
 
-# 在容器的根目录下创建 app 目录
+RUN apk --no-cache add ca-certificates
+
 RUN mkdir /app
-
-# 将工作目录切换到 /app 下
 WORKDIR /app
+COPY --from=builder /go/src/shippy/vessel-service/vessel-service .
 
-# 将微服务的服务端运行文件拷贝到 /app 下
-ADD vessel-service /app/vessel-service
-
-# 运行服务端
 CMD ["./vessel-service"]
